@@ -20,8 +20,13 @@ type CaptchaWindow = Window & {
     ready: (callback: () => void) => void;
     render: (
       element: Element,
-      options: { sitekey: string; callback: (token: string) => void; 'expired-callback'?: () => void },
+      options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        'expired-callback'?: () => void;
+      },
     ) => number;
+    reset: (widgetId?: number) => void;
   };
 };
 
@@ -42,24 +47,30 @@ export function VideoAccessGate({
 }: VideoAccessGateProps) {
   const router = useRouter();
   const captchaRef = useRef<HTMLDivElement | null>(null);
-  const widgetRendered = useRef(false);
+  const widgetId = useRef<number | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!recaptchaConfigured || captchaVerified || !captchaRef.current || widgetRendered.current) return;
+    if (!recaptchaConfigured || captchaVerified || !captchaRef.current || widgetId.current !== null) return;
 
     const scriptId = 'google-recaptcha-v2';
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    let createdScript = false;
+    const createdScript = !script;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+    }
 
-    const renderWidget = () => {
+    const renderCaptcha = () => {
       const captcha = (window as CaptchaWindow).grecaptcha;
-      if (!captcha || !captchaRef.current || widgetRendered.current) return;
+      if (!captcha || !captchaRef.current || widgetId.current !== null) return;
       captcha.ready(() => {
-        if (!captchaRef.current || widgetRendered.current) return;
-        widgetRendered.current = true;
-        captcha.render(captchaRef.current, {
+        if (!captchaRef.current || widgetId.current !== null) return;
+        widgetId.current = captcha.render(captchaRef.current, {
           sitekey: recaptchaSiteKey,
           callback: async (token) => {
             setLoading(true);
@@ -82,7 +93,7 @@ export function VideoAccessGate({
                   ? verificationError.message
                   : 'CAPTCHA verification could not be completed.',
               );
-              widgetRendered.current = false;
+              captcha.reset(widgetId.current ?? undefined);
             } finally {
               setLoading(false);
             }
@@ -92,28 +103,18 @@ export function VideoAccessGate({
       });
     };
 
-    const onScriptLoad = () => renderWidget();
-    const onScriptError = () => setError('Unable to load Google reCAPTCHA. Check your connection and try again.');
-
-    if (!script) {
-      script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
-      script.async = true;
-      script.defer = true;
-      createdScript = true;
-    }
-
-    script.addEventListener('load', onScriptLoad);
-    script.addEventListener('error', onScriptError);
+    const onLoad = () => renderCaptcha();
+    const onError = () => setError('Unable to load Google reCAPTCHA. Check your connection and try again.');
+    script.addEventListener('load', onLoad);
+    script.addEventListener('error', onError);
     if (createdScript) document.head.appendChild(script);
-    if ((window as CaptchaWindow).grecaptcha) renderWidget();
+    if ((window as CaptchaWindow).grecaptcha) renderCaptcha();
 
     return () => {
-      script?.removeEventListener('load', onScriptLoad);
-      script?.removeEventListener('error', onScriptError);
+      script?.removeEventListener('load', onLoad);
+      script?.removeEventListener('error', onError);
     };
-  }, [captchaConfigured, captchaVerified, recaptchaSiteKey, router]);
+  }, [captchaVerified, recaptchaConfigured, recaptchaSiteKey, router]);
 
   const accessGranted = recaptchaConfigured && captchaVerified;
 
