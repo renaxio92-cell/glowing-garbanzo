@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-import { Download, Heart, Share2 } from 'lucide-react';
+import { Heart, Share2 } from 'lucide-react';
 
 type VideoActionsProps = {
   videoId: string;
   videoEmbedUrl: string;
 };
 
-export function VideoActions({ videoId, videoEmbedUrl }: VideoActionsProps) {
+export function VideoActions({ videoId }: VideoActionsProps) {
   const [liked, setLiked] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -27,7 +26,7 @@ export function VideoActions({ videoId, videoEmbedUrl }: VideoActionsProps) {
     try {
       window.localStorage.setItem(`video-liked:${videoId}`, String(nextLiked));
     } catch {
-      // Keep the control usable when localStorage is unavailable.
+      // The control remains usable if browser storage is unavailable.
     }
   };
 
@@ -35,7 +34,7 @@ export function VideoActions({ videoId, videoEmbedUrl }: VideoActionsProps) {
     const url = window.location.href;
     try {
       if (navigator.share) {
-        await navigator.share({ title: `${videoId}.mp4`, url });
+        await navigator.share({ title: 'Jawara Video', url });
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
         setCopied(true);
@@ -46,21 +45,18 @@ export function VideoActions({ videoId, videoEmbedUrl }: VideoActionsProps) {
     }
   };
 
-  const downloadable = new URL(videoEmbedUrl).hostname !== 'vski.cc';
+  const buttonClass = 'inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-amber-200/30 hover:bg-amber-200/[0.06] focus-visible:outline-none';
 
   return (
-    <div className="mt-5 flex flex-wrap gap-3">
-      <button type="button" onClick={toggleLike} aria-pressed={liked} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-panel px-4 py-2 text-sm hover:border-sky-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
-        <Heart className={`h-4 w-4 ${liked ? 'fill-sky-300 text-sky-300' : ''}`} />{liked ? 'Liked' : 'Like'}
+    <div className="flex flex-wrap gap-2.5">
+      <button type="button" onClick={toggleLike} aria-pressed={liked} className={buttonClass}>
+        <Heart className={`h-4 w-4 ${liked ? 'fill-rose-400 text-rose-400' : ''}`} />
+        {liked ? 'Disukai' : 'Suka'}
       </button>
-      <button type="button" onClick={share} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-panel px-4 py-2 text-sm hover:border-sky-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
-        <Share2 className="h-4 w-4" />{copied ? 'URL copied' : 'Share'}
+      <button type="button" onClick={share} className={buttonClass}>
+        <Share2 className="h-4 w-4" />
+        {copied ? 'Tautan tersalin' : 'Bagikan'}
       </button>
-      {downloadable ? (
-        <a href={videoEmbedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-panel px-4 py-2 text-sm hover:border-sky-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
-          <Download className="h-4 w-4" />Download
-        </a>
-      ) : null}
     </div>
   );
 }

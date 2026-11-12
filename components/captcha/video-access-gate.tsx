@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowUpRight, BadgeCheck, Clapperboard, Film, LockKeyhole, Play, Sparkles } from 'lucide-react';
 
 import { VideoActions } from '@/components/video/video-actions';
-import type { VideoDisplayMetadata } from '@/schemas/video';
 
 type VideoAccessGateProps = {
   videoId: string;
   videoEmbedUrl: string;
-  displayMetadata: VideoDisplayMetadata | undefined;
+  displayMetadata: import('@/schemas/video').VideoDisplayMetadata | undefined;
   recaptchaSiteKey: string;
   recaptchaConfigured: boolean;
   captchaVerified: boolean;
@@ -20,27 +20,21 @@ type CaptchaWindow = Window & {
     ready: (callback: () => void) => void;
     render: (
       element: Element,
-      options: {
-        sitekey: string;
-        callback: (token: string) => void;
-        'expired-callback'?: () => void;
-      },
+      options: { sitekey: string; callback: (token: string) => void; 'expired-callback'?: () => void },
     ) => number;
     reset: (widgetId?: number) => void;
   };
 };
 
-const metadataItems = [
-  { key: 'duration', label: 'Duration' },
-  { key: 'fileSize', label: 'File size' },
-  { key: 'views', label: 'Views (simulated)' },
-  { key: 'uploadDate', label: 'Upload date' },
-] as const;
+const experiencePoints = [
+  { icon: Film, title: 'Fokus pada video', description: 'Tampilan bersih yang menjaga perhatian tetap pada konten.' },
+  { icon: LockKeyhole, title: 'Akses terlindungi', description: 'Verifikasi akses diterapkan sebelum pemutar dibuka.' },
+  { icon: Sparkles, title: 'Nyaman di berbagai layar', description: 'Tata letak responsif untuk desktop maupun perangkat seluler.' },
+];
 
 export function VideoAccessGate({
   videoId,
   videoEmbedUrl,
-  displayMetadata,
   recaptchaSiteKey,
   recaptchaConfigured,
   captchaVerified,
@@ -57,7 +51,6 @@ export function VideoAccessGate({
     const scriptId = 'google-recaptcha-v2';
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
     const createdScript = !script;
-
     if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
@@ -69,7 +62,6 @@ export function VideoAccessGate({
     const renderCaptcha = () => {
       const captcha = (window as CaptchaWindow).grecaptcha;
       if (!captcha || !captchaRef.current || widgetId.current !== null) return;
-
       captcha.ready(() => {
         if (!captchaRef.current || widgetId.current !== null) return;
         widgetId.current = captcha.render(captchaRef.current, {
@@ -86,29 +78,23 @@ export function VideoAccessGate({
               });
               const result = (await response.json()) as { ok?: boolean; error?: string };
               if (!response.ok || result.ok !== true) {
-                throw new Error(result.error ?? 'CAPTCHA verification failed.');
+                throw new Error(result.error ?? 'Verifikasi tidak berhasil. Silakan coba lagi.');
               }
               router.refresh();
             } catch (verificationError) {
-              setError(
-                verificationError instanceof Error
-                  ? verificationError.message
-                  : 'CAPTCHA verification could not be completed.',
-              );
-              const captchaApi = (window as CaptchaWindow).grecaptcha;
-              captchaApi?.reset(widgetId.current ?? undefined);
+              setError(verificationError instanceof Error ? verificationError.message : 'Verifikasi belum dapat diselesaikan.');
+              (window as CaptchaWindow).grecaptcha?.reset(widgetId.current ?? undefined);
             } finally {
               setLoading(false);
             }
           },
-          'expired-callback': () => setError('CAPTCHA expired. Please complete it again.'),
+          'expired-callback': () => setError('Verifikasi kedaluwarsa. Silakan ulangi.'),
         });
       });
     };
 
     const onLoad = () => renderCaptcha();
-    const onError = () => setError('Unable to load Google reCAPTCHA. Check your connection and try again.');
-
+    const onError = () => setError('reCAPTCHA tidak dapat dimuat. Periksa koneksi lalu coba lagi.');
     script.addEventListener('load', onLoad);
     script.addEventListener('error', onError);
     if (createdScript) document.head.appendChild(script);
@@ -123,73 +109,116 @@ export function VideoAccessGate({
   const accessGranted = recaptchaConfigured && captchaVerified;
 
   return (
-    <main className="min-h-screen bg-surface px-4 py-6 text-slate-100 sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-5xl">
-        <header className="mb-6 flex min-h-12 items-center border-b border-white/10 pb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-200">Video player</p>
+    <main className="relative min-h-screen overflow-hidden text-slate-100">
+      <div aria-hidden="true" className="player-grid pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-72 h-80 w-80 rounded-full bg-emerald-500/[0.07] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-96 h-80 w-80 rounded-full bg-amber-400/[0.06] blur-3xl" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 sm:px-7 lg:px-10">
+        <header className="flex items-center justify-between border-b border-white/[0.08] py-5">
+          <a href="/" className="group inline-flex items-center gap-3" aria-label="Jawara Video, beranda">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-300 to-amber-600 text-slate-950 shadow-[0_8px_30px_rgba(217,167,72,0.2)] transition-transform group-hover:-rotate-3">
+              <Play className="ml-0.5 h-5 w-5 fill-current" />
+            </span>
+            <span>
+              <span className="block text-base font-bold tracking-tight text-white sm:text-lg">Jawara <span className="text-amber-300">Video</span></span>
+              <span className="hidden text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500 sm:block">Cerita untuk dinikmati</span>
+            </span>
+          </a>
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-3 py-2 text-xs font-medium text-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
+            Pemutar video
+          </div>
         </header>
 
-        {accessGranted ? (
-          <section aria-labelledby="video-title">
-            <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-black shadow-glow">
-              <iframe
-                title={`Video ${videoId}`}
-                src={videoEmbedUrl}
-                allow="fullscreen"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-                className="h-full w-full border-0"
-              />
+        <div className="flex-1 py-8 sm:py-12">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.23em] text-amber-300">
+                <Clapperboard className="h-4 w-4" /> Ruang menonton
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Nikmati setiap momen.</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">Pemutar video Jawara Video dirancang sederhana, nyaman, dan fokus pada pengalaman menonton.</p>
             </div>
-            <div className="mt-5 border-b border-white/10 pb-5">
-              <h1 id="video-title" className="break-all text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                {videoId}.mp4
-              </h1>
-              <p className="mt-1 text-xs text-slate-400">Display name generated from the video ID.</p>
-              <p className="mt-2 text-xs text-slate-500">Provider embed is provisional and must be verified before production.</p>
-              <VideoActions videoId={videoId} videoEmbedUrl={videoEmbedUrl} />
-            </div>
-            <section className="mt-5" aria-labelledby="metadata-heading">
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="metadata-heading" className="text-sm font-semibold text-slate-100">Video details</h2>
-                <p className="text-xs text-slate-500">Display values are simulated sample data, not provider statistics.</p>
-              </div>
-              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {metadataItems.map(({ key, label }) => {
-                  const value = displayMetadata?.[key];
-                  return (
-                    <div key={key} className="min-h-20 rounded-lg border border-white/10 bg-panel p-3 sm:p-4">
-                      <dt className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-slate-400">{label}</dt>
-                      <dd className="mt-2 break-words text-sm font-semibold text-slate-100 sm:text-base">
-                        {value === undefined ? 'Unavailable' : String(value)}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </section>
-          </section>
-        ) : (
-          <section className="mx-auto w-full max-w-md rounded-2xl border border-white/10 bg-panel p-6 shadow-glow" aria-labelledby="access-title">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">Access check</p>
-            <h1 id="access-title" className="mt-4 text-2xl font-semibold text-white">Verify before playback</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              {recaptchaConfigured
-                ? 'Complete the CAPTCHA to unlock this video. The player remains locked until the server confirms verification.'
-                : 'Playback is unavailable because CAPTCHA verification is not configured. Contact the site administrator.'}
-            </p>
-            {recaptchaConfigured ? (
-              <div className="mt-6 min-h-[78px] rounded-lg border border-white/10 bg-slate-950/60 p-3">
-                <div ref={captchaRef} />
-              </div>
-            ) : null}
-            {error ? <p role="alert" className="mt-4 text-sm text-rose-300">{error}</p> : null}
-            {loading ? <p role="status" className="mt-4 text-sm text-sky-200">Verifying...</p> : null}
-          </section>
-        )}
+            {accessGranted ? <VideoActions videoId={videoId} videoEmbedUrl={videoEmbedUrl} /> : null}
+          </div>
 
-        <footer className="mt-10 border-t border-white/10 pt-4 text-xs text-slate-500">Personal video playback</footer>
+          {accessGranted ? (
+            <section aria-label="Pemutar video">
+              <div className="group relative overflow-hidden rounded-[1.65rem] border border-white/[0.1] bg-[#05080e] p-1.5 shadow-[0_28px_90px_rgba(0,0,0,0.48)] sm:p-2">
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[1.65rem] bg-gradient-to-br from-amber-300/[0.13] via-transparent to-emerald-300/[0.08]" />
+                <div className="relative aspect-video overflow-hidden rounded-[1.2rem] bg-black">
+                  <iframe
+                    title={`Pemutar video Jawara Video ${videoId}`}
+                    src={videoEmbedUrl}
+                    allow="fullscreen"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    className="h-full w-full border-0"
+                  />
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-300/[0.1] text-amber-200"><BadgeCheck className="h-5 w-5" /></span>
+                  <div>
+                    <h2 className="font-semibold text-white">Siap untuk menonton</h2>
+                    <p className="mt-0.5 text-xs text-slate-400">Bagikan halaman ini agar teman ikut menikmati.</p>
+                  </div>
+                </div>
+                <a href="#tentang" className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-200 transition-colors hover:text-amber-100">
+                  Tentang Jawara Video <ArrowUpRight className="h-4 w-4" />
+                </a>
+              </div>
+            </section>
+          ) : (
+            <section className="relative mx-auto max-w-xl overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#101824]/90 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:p-9" aria-labelledby="access-title">
+              <div aria-hidden="true" className="absolute -right-10 -top-14 h-40 w-40 rounded-full border border-amber-200/10" />
+              <div className="relative">
+                <span className="mb-5 grid h-12 w-12 place-items-center rounded-2xl border border-amber-200/15 bg-amber-300/[0.08] text-amber-200"><LockKeyhole className="h-5 w-5" /></span>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Pemeriksaan akses</p>
+                <h2 id="access-title" className="mt-3 text-2xl font-semibold tracking-tight text-white">Verifikasi sebelum menonton</h2>
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                  {recaptchaConfigured
+                    ? 'Selesaikan verifikasi di bawah ini untuk membuka pemutar video.'
+                    : 'Pemutaran belum tersedia karena verifikasi belum dikonfigurasi. Silakan hubungi pengelola situs.'}
+                </p>
+                {recaptchaConfigured ? <div className="mt-7 min-h-[78px] rounded-xl border border-white/10 bg-[#090e17] p-3"><div ref={captchaRef} /></div> : null}
+                {error ? <p role="alert" className="mt-4 text-sm text-rose-300">{error}</p> : null}
+                {loading ? <p role="status" className="mt-4 text-sm text-amber-200">Memverifikasi…</p> : null}
+              </div>
+            </section>
+          )}
+
+          <section id="tentang" className="mt-16 scroll-mt-8" aria-labelledby="experience-title">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Dibuat untuk pengalaman menonton</p>
+                <h2 id="experience-title" className="mt-2 text-2xl font-semibold tracking-tight text-white">Sederhana. Nyaman. Fokus.</h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-slate-400">Semua elemen dirancang untuk membantu Anda langsung menikmati video tanpa tampilan yang berlebihan.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {experiencePoints.map(({ icon: Icon, title, description }, index) => (
+                <article key={title} className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.055] to-white/[0.015] p-5 transition-colors hover:border-amber-200/20">
+                  <span className="absolute right-4 top-3 text-4xl font-semibold tracking-tighter text-white/[0.035]">0{index + 1}</span>
+                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-200/10 bg-emerald-300/[0.07] text-emerald-200"><Icon className="h-5 w-5" /></span>
+                  <h3 className="mt-5 font-semibold text-slate-100">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <footer className="mt-auto border-t border-white/[0.08] py-7">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <a href="/" className="inline-flex items-center gap-2.5 font-semibold text-slate-200"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-300 text-slate-950"><Play className="ml-0.5 h-4 w-4 fill-current" /></span>Jawara <span className="-ml-2 text-amber-300">Video</span></a>
+            <p className="text-xs leading-5 text-slate-500">Tempat menikmati video dengan pengalaman yang nyaman dan fokus.</p>
+            <p className="text-xs text-slate-600">© {new Date().getFullYear()} Jawara Video</p>
+          </div>
+        </footer>
       </div>
     </main>
   );

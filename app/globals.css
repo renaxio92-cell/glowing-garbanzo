@@ -4,22 +4,46 @@
 
 :root {
   color-scheme: dark;
-  background: #0b0f19;
-  color: #f8fafc;
+  background: #080d17;
+  color: #f3f5f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html {
   min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  background: #0b0f19;
-  color: #f8fafc;
+  background:
+    radial-gradient(ellipse at 50% -18%, rgba(32, 91, 77, 0.22), transparent 46%),
+    #080d17;
+  color: #f3f5f7;
   font-family: Arial, Helvetica, sans-serif;
 }
 
 * {
   box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(215, 173, 91, 0.34);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid #d7ad5b;
+  outline-offset: 3px;
+}
+
+.player-grid {
+  background-image: linear-gradient(rgba(226, 232, 240, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(226, 232, 240, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
 }
