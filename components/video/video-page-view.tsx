@@ -2,6 +2,7 @@ import type { VideoDisplayMetadata } from '@/schemas/video';
 
 type VideoPageViewProps = {
   videoId: string;
+  videoEmbedUrl: string;
   displayMetadata: VideoDisplayMetadata | undefined;
 };
 
@@ -14,6 +15,7 @@ const metadataItems = [
 
 export function VideoPageView({
   videoId,
+  videoEmbedUrl,
   displayMetadata,
 }: VideoPageViewProps) {
   return (
@@ -30,21 +32,15 @@ export function VideoPageView({
             className="relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-black shadow-glow"
             aria-label="Video player area"
           >
-            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-              <div
-                aria-hidden="true"
-                className="mb-5 flex size-14 items-center justify-center rounded-full border border-white/15 bg-white/5"
-              >
-                <span className="ml-1 block size-0 border-y-[9px] border-y-transparent border-l-[14px] border-l-sky-200" />
-              </div>
-              <p className="text-sm font-medium text-slate-100 sm:text-base">
-                Player integration is pending
-              </p>
-              <p className="mt-2 max-w-md text-xs leading-5 text-slate-400 sm:text-sm">
-                Playback will be enabled after the CAPTCHA gate and provider embed
-                integration are implemented.
-              </p>
-            </div>
+            <iframe
+              title={`Video ${videoId}`}
+              src={videoEmbedUrl}
+              allow="fullscreen"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="h-full w-full border-0"
+            />
           </div>
 
           <div className="mt-5 flex flex-col gap-2 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
@@ -56,6 +52,9 @@ export function VideoPageView({
                 Display name generated from the video ID.
               </p>
             </div>
+            <p className="text-xs text-slate-500">
+              Provider integration is provisional until its official embed behavior is verified.
+            </p>
           </div>
 
           <section className="mt-5" aria-labelledby="metadata-heading">

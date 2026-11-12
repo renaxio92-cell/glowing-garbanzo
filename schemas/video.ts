@@ -1,15 +1,19 @@
 import { z } from 'zod';
 
 const videoEmbedUrlSchema = z.string().url().refine((value) => {
-  const url = new URL(value);
-  return (
-    url.protocol === 'https:' &&
-    url.hostname === 'vski.cc' &&
-    url.port === '' &&
-    url.username === '' &&
-    url.password === '' &&
-    /^\/e\/[^/]+$/.test(url.pathname)
-  );
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'vski.cc' &&
+      url.port === '' &&
+      url.username === '' &&
+      url.password === '' &&
+      /^\/e\/[^/]+$/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
 }, 'Expected an HTTPS Vidoy embed URL in the form https://vski.cc/e/{video_id}.');
 
 export const videoRecordSchema = z
@@ -19,22 +23,20 @@ export const videoRecordSchema = z
   })
   .strict();
 
-export const videoRecordsSchema = z
-  .array(videoRecordSchema)
-  .superRefine((records, context) => {
-    const seenIds = new Set<string>();
+export const videoRecordsSchema = z.array(videoRecordSchema).superRefine((records, context) => {
+  const seenIds = new Set<string>();
 
-    records.forEach((record, index) => {
-      if (seenIds.has(record.id)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Duplicate video ID: ${record.id}`,
-          path: [index, 'id'],
-        });
-      }
-      seenIds.add(record.id);
-    });
+  records.forEach((record, index) => {
+    if (seenIds.has(record.id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Duplicate video ID: ${record.id}`,
+        path: [index, 'id'],
+      });
+    }
+    seenIds.add(record.id);
   });
+});
 
 export const videoDisplayMetadataSchema = z
   .object({

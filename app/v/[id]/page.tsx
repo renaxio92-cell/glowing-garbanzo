@@ -17,5 +17,11 @@ export default async function VideoPage({ params }: VideoPageProps) {
 
   const displayMetadata = getVideoDisplayMetadataById(id);
 
-  return <VideoPageView videoId={video.id} displayMetadata={displayMetadata} />;
+  return (
+    <VideoPageView
+      videoId={video.id}
+      videoEmbedUrl={video.embedUrl}
+      displayMetadata={displayMetadata}
+    />
+  );
 }
