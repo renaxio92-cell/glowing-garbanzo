@@ -57,6 +57,7 @@ export function VideoAccessGate({
     const scriptId = 'google-recaptcha-v2';
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
     const createdScript = !script;
+
     if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
@@ -68,6 +69,7 @@ export function VideoAccessGate({
     const renderCaptcha = () => {
       const captcha = (window as CaptchaWindow).grecaptcha;
       if (!captcha || !captchaRef.current || widgetId.current !== null) return;
+
       captcha.ready(() => {
         if (!captchaRef.current || widgetId.current !== null) return;
         widgetId.current = captcha.render(captchaRef.current, {
@@ -93,7 +95,8 @@ export function VideoAccessGate({
                   ? verificationError.message
                   : 'CAPTCHA verification could not be completed.',
               );
-              captcha.reset(widgetId.current ?? undefined);
+              const captchaApi = (window as CaptchaWindow).grecaptcha;
+              captchaApi?.reset(widgetId.current ?? undefined);
             } finally {
               setLoading(false);
             }
@@ -105,6 +108,7 @@ export function VideoAccessGate({
 
     const onLoad = () => renderCaptcha();
     const onError = () => setError('Unable to load Google reCAPTCHA. Check your connection and try again.');
+
     script.addEventListener('load', onLoad);
     script.addEventListener('error', onError);
     if (createdScript) document.head.appendChild(script);
