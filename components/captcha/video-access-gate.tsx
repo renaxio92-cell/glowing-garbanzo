@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, BadgeCheck, Clapperboard, Film, LockKeyhole, Play, Sparkles } from 'lucide-react';
+import { Clapperboard, LockKeyhole, Play } from 'lucide-react';
 
 import { VideoActions } from '@/components/video/video-actions';
 
@@ -25,12 +25,6 @@ type CaptchaWindow = Window & {
     reset: (widgetId?: number) => void;
   };
 };
-
-const experiencePoints = [
-  { icon: Film, title: 'Fokus pada video', description: 'Tampilan bersih yang menjaga perhatian tetap pada konten.' },
-  { icon: LockKeyhole, title: 'Akses terlindungi', description: 'Verifikasi akses diterapkan sebelum pemutar dibuka.' },
-  { icon: Sparkles, title: 'Nyaman di berbagai layar', description: 'Tata letak responsif untuk desktop maupun perangkat seluler.' },
-];
 
 export function VideoAccessGate({
   videoId,
@@ -132,15 +126,12 @@ export function VideoAccessGate({
         </header>
 
         <div className="flex-1 py-8 sm:py-12">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.23em] text-amber-300">
-                <Clapperboard className="h-4 w-4" /> Ruang menonton
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Nikmati setiap momen.</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">Pemutar video Jawara Video dirancang sederhana, nyaman, dan fokus pada pengalaman menonton.</p>
-            </div>
-            {accessGranted ? <VideoActions videoId={videoId} videoEmbedUrl={videoEmbedUrl} /> : null}
+          <div className="mb-6">
+            <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.23em] text-amber-300">
+              <Clapperboard className="h-4 w-4" /> Ruang menonton
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Nikmati setiap momen.</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">Pemutar video Jawara Video dirancang sederhana, nyaman, dan fokus pada pengalaman menonton.</p>
           </div>
 
           {accessGranted ? (
@@ -159,17 +150,12 @@ export function VideoAccessGate({
                   />
                 </div>
               </div>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-300/[0.1] text-amber-200"><BadgeCheck className="h-5 w-5" /></span>
-                  <div>
-                    <h2 className="font-semibold text-white">Siap untuk menonton</h2>
-                    <p className="mt-0.5 text-xs text-slate-400">Bagikan halaman ini agar teman ikut menikmati.</p>
-                  </div>
+              <div className="mt-5 flex flex-col gap-4 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Sedang diputar</p>
+                  <h2 className="mt-1 break-all text-lg font-semibold text-white">{videoId}</h2>
                 </div>
-                <a href="#tentang" className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-200 transition-colors hover:text-amber-100">
-                  Tentang Jawara Video <ArrowUpRight className="h-4 w-4" />
-                </a>
+                <VideoActions videoId={videoId} videoEmbedUrl={videoEmbedUrl} />
               </div>
             </section>
           ) : (
@@ -190,26 +176,6 @@ export function VideoAccessGate({
               </div>
             </section>
           )}
-
-          <section id="tentang" className="mt-16 scroll-mt-8" aria-labelledby="experience-title">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Dibuat untuk pengalaman menonton</p>
-                <h2 id="experience-title" className="mt-2 text-2xl font-semibold tracking-tight text-white">Sederhana. Nyaman. Fokus.</h2>
-              </div>
-              <p className="max-w-md text-sm leading-6 text-slate-400">Semua elemen dirancang untuk membantu Anda langsung menikmati video tanpa tampilan yang berlebihan.</p>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {experiencePoints.map(({ icon: Icon, title, description }, index) => (
-                <article key={title} className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.055] to-white/[0.015] p-5 transition-colors hover:border-amber-200/20">
-                  <span className="absolute right-4 top-3 text-4xl font-semibold tracking-tighter text-white/[0.035]">0{index + 1}</span>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-200/10 bg-emerald-300/[0.07] text-emerald-200"><Icon className="h-5 w-5" /></span>
-                  <h3 className="mt-5 font-semibold text-slate-100">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-                </article>
-              ))}
-            </div>
-          </section>
         </div>
 
         <footer className="mt-auto border-t border-white/[0.08] py-7">
