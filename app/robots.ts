@@ -1,11 +1,10 @@
-import type { MetadataRoute } from 'next';
+import { siteConfig } from '@/lib/site-config';
 
-import { getSiteUrl } from '@/lib/site-config';
-
-export default function robots(): MetadataRoute.Robots {
-  const siteUrl = getSiteUrl();
+export default function robots() {
+  const siteUrl = siteConfig.siteUrl;
+  const sitemap = siteUrl ? new URL('/sitemap.xml', siteUrl).toString() : undefined;
   return {
     rules: { userAgent: '*', allow: '/', disallow: ['/api/'] },
-    ...(siteUrl ? { sitemap: new URL('/sitemap.xml', siteUrl).toString() } : {}),
+    ...(sitemap ? { sitemap } : {}),
   };
 }

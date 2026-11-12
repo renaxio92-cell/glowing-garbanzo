@@ -1,84 +1,93 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { z } from 'zod';
-
 import {
   videoDisplayMetadataMapSchema,
   videoDisplayMetadataSchema,
   videoRecordsSchema,
 } from '../schemas/video';
 
-const baseDir = process.cwd();
-const videosPath = path.join(baseDir, 'data', 'videos.json');
-const poolPath = path.join(baseDir, 'data', 'simulation-pool.json');
-const assignedPath = path.join(baseDir, 'data', 'video-display-metadata.json');
+const dataDir = path.join(process.cwd(), 'data');
+const videosPath = path.join(dataDir, 'videos.json');
+const poolPath = path.join(dataDir, 'simulation-pool.json');
+const assignedPath = path.join(dataDir, 'video-display-metadata.json');
 
-async function readJson<T>(filePath: string, parser: z.ZodType<T>): Promise<T> {
-  const raw = await fs.readFile(filePath, 'utf8');
-  return parser.parse(JSON.parse(raw) as unknown);
+async function readJson(filePath: string): Promise<unknown> {
+  return JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown;
 }
 
-async function writeJson(filePath: string, value: unknown): Promise<void> {
-  const tempPath = `${filePath}.tmp`;
-  await fs.writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
-  await fs.rename(tempPath, filePath);
+async function readAssignments(): Promise<Record<string, { duration: string; fileSize: string; views: number; uploadDate: string }>> {
+  try {
+    return videoDisplayMetadataMapSchema.parse(await readJson(assignedPath));
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return {};
+    throw error;
+  }
+}
+
+async function writeJsonAtomically(filePath: string, value: unknown): Promise<void> {
+  const temporaryPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    await fs.writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
+    await fs.rename(temporaryPath, filePath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+function shuffle<T>(values: T[]): T[] {
+  const result = [...values];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+  }
+  return result;
 }
 
 async function main(): Promise<void> {
-  const videoRecords = await readJson(videosPath, videoRecordsSchema);
-  const currentAssignments = await readJson(assignedPath, videoDisplayMetadataMapSchema).catch(() => ({}));
-  const currentPool = await readJson(poolPath, z.array(videoDisplayMetadataSchema));
+  const videos = videoRecordsSchema.parse(await readJson(videosPath));
+  const assignments = await readAssignments();
+  const pool = videoDisplayMetadataSchema.array().parse(await readJson(poolPath));
+  const knownIds = new Set(videos.map(({ id }) => id));
+  const danglingIds = Object.keys(assignments).filter((id) => !knownIds.has(id));
+  if (danglingIds.length) throw new Error(`Assignments exist for unknown video IDs: ${danglingIds.join(', ')}`);
 
-  const assignedKeys = new Set(Object.keys(currentAssignments));
-  const pendingAssignments = videoRecords.filter((record) => !assignedKeys.has(record.id));
-
-  if (pendingAssignments.length === 0) {
-    console.log('No new assignments required. Existing metadata assignments are already in place.');
+  const pending = videos.filter(({ id }) => !Object.hasOwn(assignments, id));
+  if (!pending.length) {
+    console.log('No new metadata assignments required.');
     return;
   }
 
-  if (currentPool.length < pendingAssignments.length) {
-    throw new Error(
-      `Not enough metadata combinations in data/simulation-pool.json. Required: ${pendingAssignments.length}. Available: ${currentPool.length}.`,
-    );
-  }
-
-  const existingPoolValues = new Set(
-    Object.values(currentAssignments).map((value) => JSON.stringify(value)),
-  );
-
-  const remainingPool = currentPool.filter(
-    (entry) => !existingPoolValues.has(JSON.stringify(entry)),
-  );
-
-  if (remainingPool.length < pendingAssignments.length) {
-    throw new Error(
-      `Remaining metadata pool is insufficient for all pending video assignments. Required: ${pendingAssignments.length}. Available: ${remainingPool.length}.`,
-    );
-  }
-
-  const shuffledPool = [...remainingPool].sort(() => Math.random() - 0.5);
-  const nextAssignments = { ...currentAssignments };
-
-  pendingAssignments.forEach((record, index) => {
-    nextAssignments[record.id] = shuffledPool[index];
+  const stableValue = (value: unknown) => JSON.stringify(value);
+  const existing = new Set(Object.values(assignments).map(stableValue));
+  const seenPool = new Set<string>();
+  const available = pool.filter((entry) => {
+    const key = stableValue(entry);
+    if (existing.has(key) || seenPool.has(key)) return false;
+    seenPool.add(key);
+    return true;
   });
 
-  const updatedPool = remainingPool.filter(
-    (entry) => !pendingAssignments.some((record) => JSON.stringify(nextAssignments[record.id]) === JSON.stringify(entry)),
-  );
+  if (available.length < pending.length) {
+    throw new Error(`Metadata pool is insufficient: ${pending.length} required, ${available.length} unique unused combinations available.`);
+  }
 
-  await writeJson(assignedPath, nextAssignments);
-  await writeJson(poolPath, updatedPool);
+  const selected = shuffle(available).slice(0, pending.length);
+  const nextAssignments = { ...assignments };
+  pending.forEach(({ id }, index) => {
+    nextAssignments[id] = selected[index];
+  });
+  const consumed = new Set(selected.map(stableValue));
+  const nextPool = pool.filter((entry) => !consumed.has(stableValue(entry)));
 
-  console.log(
-    `Assigned metadata to ${pendingAssignments.length} video record(s) and updated the remaining metadata pool.`,
-  );
+  // Commit assignments first: if the pool update fails, rerunning safely excludes already-assigned values.
+  await writeJsonAtomically(assignedPath, nextAssignments);
+  await writeJsonAtomically(poolPath, nextPool);
+  console.log(`Assigned metadata to ${pending.length} video record(s).`);
 }
 
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : 'Unknown metadata assignment error';
-  console.error(message);
+  console.error(error instanceof Error ? error.message : 'Unknown metadata assignment error');
   process.exitCode = 1;
 });

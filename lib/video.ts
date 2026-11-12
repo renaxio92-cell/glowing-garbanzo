@@ -9,6 +9,16 @@ import {
 
 const videoRecords = videoRecordsSchema.parse(videoData);
 const displayMetadataById = videoDisplayMetadataMapSchema.parse(videoDisplayMetadataData);
+const videoIds = new Set(videoRecords.map((video) => video.id));
+const unknownMetadataIds = Object.keys(displayMetadataById).filter((id) => !videoIds.has(id));
+
+if (unknownMetadataIds.length > 0) {
+  throw new Error(`Metadata contains unknown video IDs: ${unknownMetadataIds.join(', ')}`);
+}
+
+export function getVideoRecords(): VideoRecord[] {
+  return videoRecords;
+}
 
 export function findVideoById(id: string): VideoRecord | undefined {
   return videoRecords.find((video) => video.id === id);
