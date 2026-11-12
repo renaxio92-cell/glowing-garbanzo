@@ -45,5 +45,10 @@ export const videoDisplayMetadataSchema = z
   })
   .strict();
 
+export const videoDisplayMetadataMapSchema = z.record(
+  z.string(),
+  videoDisplayMetadataSchema,
+);
+
 export type VideoRecord = z.infer<typeof videoRecordSchema>;
 export type VideoDisplayMetadata = z.infer<typeof videoDisplayMetadataSchema>;
