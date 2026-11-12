@@ -1,22 +1,22 @@
-export function sitemap() {
+import type { MetadataRoute } from 'next';
+
+import { getSiteUrl } from '@/lib/site-config';
+import { getVideoRecords } from '@/lib/video';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const siteUrl = getSiteUrl();
+  if (!siteUrl) return [];
+
   return [
     {
-      url: 'https://example.com',
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      url: siteUrl.toString(),
+      changeFrequency: 'weekly',
       priority: 0.7,
     },
-    {
-      url: 'https://example.com/v/sample-001',
-      lastModified: new Date(),
+    ...getVideoRecords().map((video) => ({
+      url: new URL(`/v/${encodeURIComponent(video.id)}`, siteUrl).toString(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
-    },
-    {
-      url: 'https://example.com/v/sample-002',
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-    },
+    })),
   ];
 }
