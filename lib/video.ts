@@ -1,95 +1,59 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-
+import videoDisplayMetadataData from '@/data/video-display-metadata.json';
+import simulationPoolData from '@/data/simulation-pool.json';
+import videoData from '@/data/videos.json';
 import {
   videoDisplayMetadataMapSchema,
   videoDisplayMetadataSchema,
-  videoRecordSchema,
   videoRecordsSchema,
   type VideoDisplayMetadata,
   type VideoRecord,
 } from '@/schemas/video';
 
-export const DATA_DIR = path.join(process.cwd(), 'data');
+const videoRecords = videoRecordsSchema.parse(videoData);
+const displayMetadataById = videoDisplayMetadataMapSchema.parse(videoDisplayMetadataData);
+const metadataPool = videoDisplayMetadataSchema.array().parse(simulationPoolData);
 
-function safeJsonParse<T>(value: unknown, schema: { parse: (input: unknown) => T }): T | undefined {
-  try {
-    return schema.parse(value);
-  } catch {
-    return undefined;
-  }
+const videoIds = new Set(videoRecords.map(({ id }) => id));
+const unknownMetadataIds = Object.keys(displayMetadataById).filter((id) => !videoIds.has(id));
+if (unknownMetadataIds.length > 0) {
+  throw new Error(`Metadata contains unknown video IDs: ${unknownMetadataIds.join(', ')}`);
 }
+
+export const DATA_DIR = 'data';
 
 export function getVideoRecords(): VideoRecord[] {
-  const filePath = path.join(DATA_DIR, 'videos.json');
-
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
-    return safeJsonParse(parsed, videoRecordsSchema) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export function getVideoDisplayMetadata(videoId: string): VideoDisplayMetadata | undefined {
-  const filePath = path.join(DATA_DIR, 'video-display-metadata.json');
-
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
-    const map = safeJsonParse(parsed, videoDisplayMetadataMapSchema) ?? {};
-    return map[videoId];
-  } catch {
-    return undefined;
-  }
-}
-
-export async function readVideoRecords(): Promise<Record<string, string>> {
-  const filePath = path.join(DATA_DIR, 'videos.json');
-
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
-    const records = safeJsonParse(parsed, videoRecordsSchema) ?? [];
-    return Object.fromEntries(records.map((entry) => [entry.id, entry.embedUrl]));
-  } catch {
-    return {};
-  }
-}
-
-export async function readVideoDisplayMetadata(): Promise<Record<string, VideoDisplayMetadata>> {
-  const filePath = path.join(DATA_DIR, 'video-display-metadata.json');
-
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
-    return safeJsonParse(parsed, videoDisplayMetadataMapSchema) ?? {};
-  } catch {
-    return {};
-  }
+  return videoRecords;
 }
 
 export function getVideoRecord(videoId: string): VideoRecord | undefined {
-  return getVideoRecords().find((entry) => entry.id === videoId);
+  return videoRecords.find(({ id }) => id === videoId);
+}
+
+export function findVideoById(videoId: string): VideoRecord | undefined {
+  return getVideoRecord(videoId);
+}
+
+export function getVideoDisplayMetadata(videoId: string): VideoDisplayMetadata | undefined {
+  return displayMetadataById[videoId];
+}
+
+export function getVideoDisplayMetadataById(videoId: string): VideoDisplayMetadata | undefined {
+  return getVideoDisplayMetadata(videoId);
 }
 
 export function getVideoMetadataPool(): VideoDisplayMetadata[] {
-  const filePath = path.join(DATA_DIR, 'simulation-pool.json');
-
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
-    return safeJsonParse(parsed, z.array(videoDisplayMetadataSchema)) ?? [];
-  } catch {
-    return [];
-  }
+  return metadataPool;
 }
 
-export function zodArraySafe(value: unknown): Array<{ id: string; embedUrl: string }> {
-  const parsed = Array.isArray(value) ? value : [];
-  return parsed.filter((item): item is { id: string; embedUrl: string } => {
-    const result = videoRecordSchema.safeParse(item);
-    return result.success;
-  });
+export async function readVideoRecords(): Promise<Record<string, string>> {
+  return Object.fromEntries(videoRecords.map(({ id, embedUrl }) => [id, embedUrl]));
+}
+
+export async function readVideoDisplayMetadata(): Promise<Record<string, VideoDisplayMetadata>> {
+  return displayMetadataById;
+}
+
+export function zodArraySafe(value: unknown): VideoRecord[] {
+  const parsed = videoRecordsSchema.safeParse(value);
+  return parsed.success ? parsed.data : [];
 }
