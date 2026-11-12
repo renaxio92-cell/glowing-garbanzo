@@ -29,10 +29,11 @@ Run these checks after installing dependencies. Automated checks have not yet be
 
 ## Data and current scope
 
-- `data/videos.json` is intentionally empty until the owner supplies video records.
-- `data/simulation-pool.json` and `data/video-display-metadata.json` are intentionally empty until approved simulation values and assignment logic are added.
-- The `/v/[id]` route returns the not-found page until a matching video record exists.
-- No provider player, CAPTCHA, ads, tracking, final branding, or social preview assets are implemented in this foundation stage.
+- The JSON files currently contain **synthetic sample data for scaffolding only**. Sample IDs, embed URLs, and metadata values are not owner-provided production data; the sample embed URLs have not been verified to resolve to playable videos.
+- `data/videos.json` records contain only `id` and `embedUrl`. The sample IDs do not define or constrain the final ID format.
+- `data/simulation-pool.json` lists sample combinations not currently assigned in `data/video-display-metadata.json`; all values are illustrative, not actual provider statistics.
+- The `/v/[id]` route returns the not-found page for IDs that do not match a record.
+- Provider playback, CAPTCHA, ads, tracking, final branding, social preview assets, and the permanent metadata assignment script are not implemented in this foundation stage.
 
 ## Environment variables
 

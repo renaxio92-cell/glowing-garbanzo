@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "sample-001",
+    "embedUrl": "https://vski.cc/e/sample-001"
+  },
+  {
+    "id": "sample-002",
+    "embedUrl": "https://vski.cc/e/sample-002"
+  }
+]
