@@ -1,58 +1,76 @@
+import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: 'Video Playback',
+import { VideoAccessGate } from '@/components/captcha/video-access-gate';
+import { captchaSessionCookieName, verifyCaptchaSession } from '@/lib/captcha-session';
+import { getSiteUrl, siteConfig } from '@/lib/site-config';
+import { findVideoById, getVideoDisplayMetadataById } from '@/lib/video';
+
+export const runtime = 'nodejs';
+
+type VideoPageProps = {
+  params: Promise<{ id: string }>;
 };
 
-export default function VideoPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const videoId = params.then((p) => p.id);
+export async function generateMetadata({ params }: VideoPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const video = findVideoById(id);
+  const title = video ? `${id}.mp4` : 'Video not found';
+  const description = video
+    ? 'Personal video playback page. Display metadata is sample data.'
+    : 'The requested video could not be found.';
+  const siteUrl = getSiteUrl();
+
+  if (!video) return { title, description };
+
+  const canonicalUrl = siteUrl
+    ? new URL(`/v/${encodeURIComponent(id)}`, siteUrl).toString()
+    : undefined;
+
+  return {
+    title,
+    description,
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      title,
+      description,
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+      siteName: siteConfig.siteName,
+      type: 'video.other',
+      images: ['/images/social-preview.svg'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/images/social-preview.svg'],
+    },
+  };
+}
+
+export default async function VideoPage({ params }: VideoPageProps) {
+  const { id } = await params;
+  const video = findVideoById(id);
+  if (!video) notFound();
+
+  const cookieStore = await cookies();
+  const recaptchaConfigured =
+    process.env.RECAPTCHA_ENABLED === 'true' &&
+    Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) &&
+    Boolean(process.env.RECAPTCHA_SECRET_KEY);
+  const captchaVerified = verifyCaptchaSession(
+    cookieStore.get(captchaSessionCookieName)?.value,
+  );
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 border-b border-slate-800 pb-4">
-          <p className="text-xs uppercase tracking-[0.28em] text-sky-300">Glowing Garbanzo</p>
-        </header>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/80 shadow-glow">
-          <div className="aspect-video w-full overflow-hidden rounded-t-2xl bg-slate-950">
-            <div className="flex h-full items-center justify-center text-center">
-              <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-sky-300">Video Route</p>
-                <p className="mt-4 text-2xl font-semibold text-white">Loading video details...</p>
-                <p className="mt-2 text-sm text-slate-300">Video ID: {videoId}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4 p-5 md:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-white">{videoId}.mp4</h1>
-                <p className="mt-2 text-sm text-slate-300">Placeholder video page for route scaffolding.</p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-4">
-              {[
-                ['Duration', '---'],
-                ['File Size', '---'],
-                ['Views', '---'],
-                ['Upload Date', '---'],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
-                  <p className="mt-2 text-lg font-medium text-slate-100">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+    <VideoAccessGate
+      videoId={video.id}
+      videoEmbedUrl={video.embedUrl}
+      displayMetadata={getVideoDisplayMetadataById(id)}
+      recaptchaSiteKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''}
+      recaptchaConfigured={recaptchaConfigured}
+      captchaVerified={captchaVerified}
+    />
   );
 }

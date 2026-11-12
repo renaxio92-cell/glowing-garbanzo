@@ -1,8 +1,14 @@
 {
-  "placeholder": {
-    "duration": "00:00:00",
-    "fileSize": "0 MB",
-    "views": 0,
-    "uploadDate": "1970-01-01"
+  "sample-001": {
+    "duration": "00:31:40",
+    "fileSize": "540 MB",
+    "views": 9200,
+    "uploadDate": "2025-01-14"
+  },
+  "sample-002": {
+    "duration": "00:56:05",
+    "fileSize": "980 MB",
+    "views": 17600,
+    "uploadDate": "2025-05-22"
   }
 }
